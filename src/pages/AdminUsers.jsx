@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 
 const roles = [
   { value: 'MACHINE_OPERATOR', label: 'Machine Operator' },
-  { value: 'MAINTENANCE_ENGINEER', label: 'Maintenance Engineer' },
   { value: 'SYSTEM_ADMIN', label: 'System Admin' },
 ]
 
