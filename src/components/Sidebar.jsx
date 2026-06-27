@@ -64,7 +64,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
     { path: '/settings', label: 'Settings', icon: CogIcon },
   ]
 
-  if (role === 'ADMIN' || role === 'SYSTEM_ADMIN') {
+  if (role === 'SYSTEM_ADMIN') {
     menuItems.splice(1, 0, { path: '/admin/machines', label: 'Machine Mgmt', icon: CogIcon })
     menuItems.splice(2, 0, { path: '/admin/users', label: 'User Mgmt', icon: CogIcon })
   }
