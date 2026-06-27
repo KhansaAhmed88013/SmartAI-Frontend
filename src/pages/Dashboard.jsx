@@ -222,7 +222,7 @@ const Dashboard = () => {
         getSeverityColor={getSeverityColor}
       />
 
-      <MaintenanceInsights machineId={selectedMachine} />
+      
     </div>
   );
 };
