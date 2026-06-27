@@ -10,10 +10,7 @@ const DashboardHeader = ({ selectedMachine, onMachineChange, timeRange, onTimeRa
           selectedMachine={selectedMachine} 
           onMachineChange={onMachineChange} 
         />
-        <TimeRangeFilter 
-          selectedRange={timeRange} 
-          onRangeChange={onTimeRangeChange} 
-        />
+       
       </div>
     </div>
   )
