@@ -1,9 +1,9 @@
 import KPICard from '../KPICard'
 
-const formatMetricValue = (value) => {
+const formatMetricValue = (value, decimals = 1) => {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '--'
-  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1)
+  return numeric.toFixed(decimals)
 }
 
 const KPICardsGrid = ({ kpis, machineStatus, sensorStatuses = {} }) => {
@@ -11,7 +11,7 @@ const KPICardsGrid = ({ kpis, machineStatus, sensorStatuses = {} }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <KPICard
         title="Temperature"
-        value={formatMetricValue(kpis?.temperature)}
+        value={formatMetricValue(kpis?.temperature, 2)}
         unit="°C"
         status={sensorStatuses.temperature || machineStatus}
       />
