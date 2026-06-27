@@ -11,7 +11,7 @@ const KPICardsGrid = ({ kpis, machineStatus, sensorStatuses = {} }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <KPICard
         title="Temperature"
-        value={formatMetricValue(kpis?.temperature, 2)}
+        value={formatMetricValue(kpis?.temperature)}
         unit="°C"
         status={sensorStatuses.temperature || machineStatus}
       />
@@ -23,7 +23,7 @@ const KPICardsGrid = ({ kpis, machineStatus, sensorStatuses = {} }) => {
       />
       <KPICard
         title="Current"
-        value={formatMetricValue(kpis?.current)}
+        value={formatMetricValue(kpis?.current,2)}
         unit="Amps"
         status={sensorStatuses.current || machineStatus}
       />
