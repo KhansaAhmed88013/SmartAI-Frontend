@@ -158,50 +158,53 @@ const AIPredictions = () => {
         }
 
         const predsByH = { '15m': preds15 || [], '30m': preds30 || [], '45m': preds45 || [], '1h': preds1h || [] }
-        const latestPredictionsByHorizon = Object.fromEntries(
-          Object.entries(predsByH).map(([h, records]) => [h, pickLatestRealPrediction(records)])
-        )
         const latestRealPrediction = pickLatestRealPredictionFromAllHorizons(predsByH)
-        const selectedPrediction = latestPredictionsByHorizon[horizon] || latestRealPrediction
+        const selectedPrediction = latestRealPrediction
 
         const timeline = buildPredictionTimeline({ history, prediction: selectedPrediction })
         const predictedSeries = timeline.chartSeries
         const expected = timeline.snapshotTimeline
 
+        // We extract all values from the single 1h prediction forecast values
         const summaries = ['15m', '30m', '45m', '1h'].map((key) => {
-          const prediction = latestPredictionsByHorizon[key]
-          const horizonTimeline = buildPredictionTimeline({ history, prediction })
-          const firstForecastPoint = horizonTimeline.forecastSeries[0] || null
-          const lastForecastPoint = horizonTimeline.forecastSeries[horizonTimeline.forecastSeries.length - 1] || null
           const horizonMinutes = horizonMinutesMap[key] || 0
-          const expectedAt = horizonTimeline.lastActualTimestamp
-            ? horizonTimeline.lastActualTimestamp + (horizonMinutes * 60000)
-            : firstForecastPoint?.timestamp || null
+          
+          // Index mapping: 15m (index 5), 30m (index 11), 45m (index 17), 1h (index 23)
+          const horizonIndices = { '15m': 5, '30m': 11, '45m': 17, '1h': 23 }
+          const idx = horizonIndices[key]
+
+          const tempVal = timeline.forecastSeries[idx]?.predictedTemp ?? null
+          const vibVal = timeline.forecastSeries[idx]?.predictedVib ?? null
+          const currVal = timeline.forecastSeries[idx]?.predictedCurr ?? null
+
+          const expectedAt = timeline.lastActualTimestamp
+            ? timeline.lastActualTimestamp + (horizonMinutes * 60000)
+            : timeline.forecastSeries[idx]?.timestamp || null
 
           return {
             horizon: key,
             label: horizonLabelMap[key] || key,
-            prediction,
-            confidence: normalizeConfidence(horizonTimeline.confidence ?? prediction?.confidence),
+            prediction: selectedPrediction,
+            confidence: normalizeConfidence(timeline.confidence),
             expectedAt,
-            forecastFrom: horizonTimeline.forecastWindowStart,
-            forecastUntil: horizonTimeline.forecastWindowEnd,
-            forecastStepMinutes: horizonTimeline.stepMinutes,
-            forecastSeries: horizonTimeline.forecastSeries,
-            firstPredictedTemp: lastForecastPoint?.predictedTemp ?? null,
-            firstPredictedVib: lastForecastPoint?.predictedVib ?? null,
-            firstPredictedCurr: lastForecastPoint?.predictedCurr ?? null,
-            modelName: horizonTimeline.modelName || prediction?.modelName || prediction?.predictionSource || 'ML prediction',
-            modelVersion: horizonTimeline.modelVersion || prediction?.modelVersion || 'N/A',
-            source: formatPredictionSource(prediction?.predictionSource || horizonTimeline.predictionSource),
-            lastActualTimestamp: horizonTimeline.lastActualTimestamp,
-            forecastCount: horizonTimeline.forecastSeries.length,
-            lastForecastPoint: lastForecastPoint
+            forecastFrom: timeline.forecastWindowStart,
+            forecastUntil: timeline.forecastWindowEnd,
+            forecastStepMinutes: timeline.stepMinutes,
+            forecastSeries: timeline.forecastSeries.slice(0, idx + 1),
+            firstPredictedTemp: tempVal,
+            firstPredictedVib: vibVal,
+            firstPredictedCurr: currVal,
+            modelName: timeline.modelName || selectedPrediction?.modelName || 'ML prediction',
+            modelVersion: timeline.modelVersion || selectedPrediction?.modelVersion || 'N/A',
+            source: formatPredictionSource(selectedPrediction?.predictionSource || timeline.predictionSource),
+            lastActualTimestamp: timeline.lastActualTimestamp,
+            forecastCount: idx + 1,
+            lastForecastPoint: timeline.forecastSeries[idx] || null
           }
         })
 
         const latestPrediction = selectedPrediction
-        const confidencePercent = normalizeConfidence(timeline.confidence ?? latestPrediction?.confidence)
+        const confidencePercent = normalizeConfidence(timeline.confidence)
         const sampleCount = Math.max(
           latestPrediction?.temperatureForecastValues?.length || 0,
           latestPrediction?.currentForecastValues?.length || 0,
