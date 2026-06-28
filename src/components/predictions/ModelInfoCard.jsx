@@ -21,8 +21,8 @@ const ModelInfoCard = ({ modelInfo }) => {
             <p className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-1">{modelInfo.lastTrained}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Training Samples</p>
-            <p className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-1">{modelInfo.trainingSamples.toLocaleString()}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Prediction Length</p>
+            <p className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-1">{modelInfo.trainingSamples.toLocaleString()} points</p>
           </div>
         </div>
       </div>

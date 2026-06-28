@@ -5,17 +5,17 @@ const horizonStyles = {
     accent: 'border-sky-500 bg-sky-50 dark:bg-sky-950/20',
     badge: 'bg-sky-600 text-white'
   },
-  '1h': {
-    accent: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20',
-    badge: 'bg-emerald-600 text-white'
+  '30m': {
+    accent: 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20',
+    badge: 'bg-indigo-600 text-white'
   },
-  '6h': {
+  '45m': {
     accent: 'border-amber-500 bg-amber-50 dark:bg-amber-950/20',
     badge: 'bg-amber-600 text-white'
   },
-  '24h': {
-    accent: 'border-violet-500 bg-violet-50 dark:bg-violet-950/20',
-    badge: 'bg-violet-600 text-white'
+  '1h': {
+    accent: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20',
+    badge: 'bg-emerald-600 text-white'
   }
 }
 
@@ -28,7 +28,7 @@ const UpcomingPredictionsGrid = ({ horizonSummaries = [] }) => {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
         <h3 className="text-base sm:text-lg font-semibold text-industrial-dark dark:text-gray-100">Upcoming Predictions</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400">Each card uses its own horizon and expected timestamp.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">Derived milestones from the active forecasting pipeline.</p>
       </div>
       {cards.length === 0 ? (
         <div className="text-sm text-gray-500 dark:text-gray-400">No upcoming predictions for the selected horizon.</div>
@@ -48,6 +48,7 @@ const UpcomingPredictionsGrid = ({ horizonSummaries = [] }) => {
                   <div className="text-right text-xs text-gray-500 dark:text-gray-400">
                     <div>Confidence</div>
                     <div className="text-base font-semibold text-gray-900 dark:text-gray-100">{card.confidence ?? 0}%</div>
+                    <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400 font-mono">Source: {card.source || 'ML prediction'}</div>
                   </div>
                 </div>
 
@@ -80,8 +81,6 @@ const UpcomingPredictionsGrid = ({ horizonSummaries = [] }) => {
                     <div className="mt-1 font-semibold text-green-600 dark:text-green-400">{formatMetric(card.firstPredictedCurr)} A</div>
                   </div>
                 </div>
-
-                
               </div>
             )
           })}

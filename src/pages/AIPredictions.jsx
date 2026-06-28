@@ -11,12 +11,19 @@ import ModelInfoCard from '../components/predictions/ModelInfoCard'
 import NoPermissionMessage from '../components/predictions/NoPermissionMessage'
 import { buildPredictionTimeline } from '../utils/predictionTimeline'
 
-const horizonMinutesMap = { '15m': 15, '1h': 60, '6h': 360, '24h': 1440 }
+const horizonMinutesMap = { '15m': 15, '30m': 30, '45m': 45, '1h': 60 }
 
 const normalizeConfidence = (value) => {
   const confidenceValue = Number(value)
   if (!Number.isFinite(confidenceValue)) return 0
   return confidenceValue <= 1 ? Math.round(confidenceValue * 100) : Math.round(confidenceValue)
+}
+
+const formatPredictionSource = (source) => {
+  const src = String(source || '').toUpperCase()
+  if (src === 'ML_SERVICE') return 'Autoformer AI'
+  if (src === 'FORECAST_SERVICE') return 'Regression AI'
+  return 'Autoformer AI'
 }
 
 const getModelText = (prediction) => {
@@ -80,9 +87,9 @@ const normalizeRole = (value) => {
 
 const horizonLabelMap = {
   '15m': 'After 15 minutes',
-  '1h': 'After 1 hour',
-  '6h': 'After 6 hours',
-  '24h': 'After 24 hours'
+  '30m': 'After 30 minutes',
+  '45m': 'After 45 minutes',
+  '1h': 'After 1 hour'
 }
 
 const AIPredictions = () => {
@@ -92,7 +99,7 @@ const AIPredictions = () => {
   const [confidence, setConfidence] = useState(0)
   const [predictedPoints, setPredictedPoints] = useState([])
   const [expectedShort, setExpectedShort] = useState([])
-  const [forecastWindow, setForecastWindow] = useState({ start: null, end: null, stepMinutes: 5, lastActualTimestamp: null })
+  const [forecastWindow, setForecastWindow] = useState({ start: null, end: null, stepMinutes: 2.5, lastActualTimestamp: null })
   const [horizonSummaries, setHorizonSummaries] = useState([])
   const [predsMeta, setPredsMeta] = useState({ count: 0, lastCreated: null })
   const [maintenanceInsights, setMaintenanceInsights] = useState([])
@@ -107,7 +114,7 @@ const AIPredictions = () => {
     setPredictionData([])
     setPredictedPoints([])
     setExpectedShort([])
-    setForecastWindow({ start: null, end: null, stepMinutes: 5, lastActualTimestamp: null })
+    setForecastWindow({ start: null, end: null, stepMinutes: 2.5, lastActualTimestamp: null })
     setHorizonSummaries([])
     setConfidence(0)
     setPredsMeta({ count: 0, lastCreated: null })
@@ -129,19 +136,18 @@ const AIPredictions = () => {
 
   useEffect(() => {
     if (!selectedMachine) return
-    // UI-level RBAC: limit to MAINTENANCE_ENGINEER or SYSTEM_ADMIN
     if (!canViewPredictions) return
     let mounted = true
 
     const fetchAndBuild = async () => {
       try {
-        const [machines, history, preds15, preds1h, preds6h, preds24h, insights] = await Promise.all([
+        const [machines, history, preds15, preds30, preds45, preds1h, insights] = await Promise.all([
           api.getMachines().catch(() => []),
           api.getHistory(selectedMachine, '24h').catch(() => []),
           api.getPredictions(selectedMachine, '15m').catch(() => []),
+          api.getPredictions(selectedMachine, '30m').catch(() => []),
+          api.getPredictions(selectedMachine, '45m').catch(() => []),
           api.getPredictions(selectedMachine, '1h').catch(() => []),
-          api.getPredictions(selectedMachine, '6h').catch(() => []),
-          api.getPredictions(selectedMachine, '24h').catch(() => []),
           api.getInsights(selectedMachine, horizon).catch(() => [])
         ])
 
@@ -151,7 +157,7 @@ const AIPredictions = () => {
           setMachineStatus(effectiveStatus)
         }
 
-        const predsByH = { '15m': preds15 || [], '1h': preds1h || [], '6h': preds6h || [], '24h': preds24h || [] }
+        const predsByH = { '15m': preds15 || [], '30m': preds30 || [], '45m': preds45 || [], '1h': preds1h || [] }
         const latestPredictionsByHorizon = Object.fromEntries(
           Object.entries(predsByH).map(([h, records]) => [h, pickLatestRealPrediction(records)])
         )
@@ -160,14 +166,9 @@ const AIPredictions = () => {
 
         const timeline = buildPredictionTimeline({ history, prediction: selectedPrediction })
         const predictedSeries = timeline.chartSeries
-        const expected = timeline.forecastSeries.slice(0, 4).map((point) => ({
-          time: point.time,
-          predictedTemp: point.predictedTemp,
-          predictedVib: point.predictedVib,
-          predictedCurr: point.predictedCurr
-        }))
+        const expected = timeline.snapshotTimeline
 
-        const summaries = ['15m', '1h', '6h', '24h'].map((key) => {
+        const summaries = ['15m', '30m', '45m', '1h'].map((key) => {
           const prediction = latestPredictionsByHorizon[key]
           const horizonTimeline = buildPredictionTimeline({ history, prediction })
           const firstForecastPoint = horizonTimeline.forecastSeries[0] || null
@@ -187,12 +188,12 @@ const AIPredictions = () => {
             forecastUntil: horizonTimeline.forecastWindowEnd,
             forecastStepMinutes: horizonTimeline.stepMinutes,
             forecastSeries: horizonTimeline.forecastSeries,
-            firstPredictedTemp: firstForecastPoint?.predictedTemp ?? null,
-            firstPredictedVib: firstForecastPoint?.predictedVib ?? null,
-            firstPredictedCurr: firstForecastPoint?.predictedCurr ?? null,
+            firstPredictedTemp: lastForecastPoint?.predictedTemp ?? null,
+            firstPredictedVib: lastForecastPoint?.predictedVib ?? null,
+            firstPredictedCurr: lastForecastPoint?.predictedCurr ?? null,
             modelName: horizonTimeline.modelName || prediction?.modelName || prediction?.predictionSource || 'ML prediction',
             modelVersion: horizonTimeline.modelVersion || prediction?.modelVersion || 'N/A',
-            source: prediction?.predictionSource || horizonTimeline.predictionSource || 'ML prediction',
+            source: formatPredictionSource(prediction?.predictionSource || horizonTimeline.predictionSource),
             lastActualTimestamp: horizonTimeline.lastActualTimestamp,
             forecastCount: horizonTimeline.forecastSeries.length,
             lastForecastPoint: lastForecastPoint
@@ -241,7 +242,7 @@ const AIPredictions = () => {
           setHorizonSummaries([])
           setConfidence(0)
           setPredsMeta({ count: 0, lastCreated: null })
-          setForecastWindow({ start: null, end: null, stepMinutes: 5, lastActualTimestamp: null })
+          setForecastWindow({ start: null, end: null, stepMinutes: 2.5, lastActualTimestamp: null })
           setMaintenanceInsights([])
           setModelInfo({ modelType: 'N/A', version: 'N/A', accuracy: 0, trainingSamples: 0, lastTrained: 'N/A' })
         }
@@ -255,9 +256,9 @@ const AIPredictions = () => {
 
   const horizons = [
     { value: '15m', label: '15 Minutes' },
-    { value: '1h', label: '1 Hour' },
-    { value: '6h', label: '6 Hours' },
-    { value: '24h', label: '24 Hours' }
+    { value: '30m', label: '30 Minutes' },
+    { value: '45m', label: '45 Minutes' },
+    { value: '1h', label: '1 Hour' }
   ]
 
   const getConfidenceColor = (conf) => {
@@ -291,11 +292,11 @@ const AIPredictions = () => {
         <NoPermissionMessage />
       )}
 
-        <ExpectedShortTermPanel
-          expectedShort={expectedShort}
-          forecastWindow={forecastWindow}
-          confidence={confidence}
-        />
+      <ExpectedShortTermPanel
+        expectedShort={expectedShort}
+        forecastWindow={forecastWindow}
+        confidence={confidence}
+      />
 
       <PredictionHorizonSelector
         horizon={horizon}

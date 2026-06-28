@@ -106,6 +106,14 @@ const renderMetricChart = ({ data, title, unit, actualKey, forecastKey, actualCo
               label={{ value: 'Threshold', position: 'right' }}
             />
           )}
+          {forecastWindowStart && (
+            <ReferenceLine
+              x={forecastWindowStart}
+              stroke="#6b7280"
+              strokeDasharray="5 5"
+              label={{ value: 'Forecast Starts', position: 'top', fill: '#6b7280', fontSize: '10px' }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

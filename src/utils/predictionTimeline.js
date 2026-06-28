@@ -72,7 +72,6 @@ export const inferStepMinutes = (historySeries = []) => {
 export const buildPredictionTimeline = ({ history = [], prediction = null } = {}) => {
   const historySeries = normalizeHistorySeries(history)
   const lastHistoryPoint = historySeries.length > 0 ? historySeries[historySeries.length - 1] : null
-  const stepMinutes = inferStepMinutes(historySeries)
   const anchorTimestamp = lastHistoryPoint?.timestamp ?? extractTimestamp(prediction) ?? Date.now()
 
   const temperatureForecastValues = getForecastValues(prediction, 'temperature')
@@ -87,6 +86,9 @@ export const buildPredictionTimeline = ({ history = [], prediction = null } = {}
     fallbackForecastValues.length,
     0
   )
+
+  // Step minutes is always 2.5 for the ML prediction pipeline
+  const stepMinutes = 2.5
 
   const forecastTimestamps = Array.from({ length: totalForecastPoints }, (_, index) => {
     return anchorTimestamp + (stepMinutes * (index + 1) * 60000)
@@ -144,17 +146,48 @@ export const buildPredictionTimeline = ({ history = [], prediction = null } = {}
     ...forecastSeries
   ]
 
+  const horizonMinutesMap = {
+    '15m': 15,
+    '30m': 30,
+    '45m': 45,
+    '1h': 60
+  }
+  const horizonMinutes = horizonMinutesMap[prediction?.horizon] || 60
+  const expectedAt = anchorTimestamp + (horizonMinutes * 60000)
+
+  // Map snapshot timeline points (exactly 15m, 30m, 45m, 1h milestones)
+  const snapshotTimeline = [
+    { label: '15 Minutes', index: 5, expectedAt: anchorTimestamp + 15 * 60000 },
+    { label: '30 Minutes', index: 11, expectedAt: anchorTimestamp + 30 * 60000 },
+    { label: '45 Minutes', index: 17, expectedAt: anchorTimestamp + 45 * 60000 },
+    { label: '1 Hour', index: 23, expectedAt: anchorTimestamp + 60 * 60000 }
+  ].map(item => {
+    const tempVal = temperatureForecastValues[item.index] ?? null
+    const vibVal = vibrationForecastValues[item.index] ?? null
+    const currVal = currentForecastValues[item.index] ?? null
+    return {
+      label: item.label,
+      expectedAt: item.expectedAt,
+      time: formatTimeLabel(item.expectedAt),
+      predictedTemp: tempVal !== null ? tempVal.toFixed(2) : 'N/A',
+      predictedVib: vibVal !== null ? vibVal.toFixed(2) : 'N/A',
+      predictedCurr: currVal !== null ? currVal.toFixed(2) : 'N/A'
+    }
+  })
+
   return {
     historySeries,
     forecastSeries,
     chartSeries,
     forecastTimestamps,
     forecastLabels,
-    forecastWindowStart: forecastTimestamps[0] ?? null,
-    forecastWindowEnd: forecastTimestamps.length > 0 ? forecastTimestamps[forecastTimestamps.length - 1] : null,
+    forecastWindowStart: anchorTimestamp, // Forecast starts at the anchor (last history point)
+    forecastWindowEnd: expectedAt,
     stepMinutes,
     lastActualTimestamp: lastHistoryPoint?.timestamp ?? null,
     anchorTimestamp,
+    expectedAt,
+    snapshotTimeline,
     confidence: toFiniteNumber(prediction?.confidence) ?? 0,
     modelName: prediction?.modelName || 'ML prediction',
     modelVersion: prediction?.modelVersion || 'N/A',

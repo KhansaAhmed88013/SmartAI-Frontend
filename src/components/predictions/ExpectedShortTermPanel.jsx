@@ -28,8 +28,8 @@ const ExpectedShortTermPanel = ({ expectedShort = [], forecastWindow = {}, confi
 
           <div className="flex gap-3 flex-wrap">
           {expectedShort.map((e) => (
-            <div key={e.time} className="p-2 rounded-md bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 min-w-[160px]">
-              <div className="text-xs text-gray-500 dark:text-gray-400">Expected at {e.time}</div>
+            <div key={e.label} className="p-2 rounded-md bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 min-w-[160px]">
+              <div className="text-xs font-semibold text-industrial-dark dark:text-gray-300 mb-1">{e.label}</div>
               <div className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">{e.predictedTemp} °C</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Vib {e.predictedVib} mm/s</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Cur {e.predictedCurr} A</div>
