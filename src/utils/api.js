@@ -133,6 +133,11 @@ export async function updateUserRole(id, role) {
   return readJson(res, 'Failed to update role')
 }
 
+export async function getModelPerformance() {
+  const res = await fetch(`${BASE}/api/model-performance`, { headers: headers(false) })
+  return readJson(res, 'Failed to fetch model performance')
+}
+
 export default {
   login,
   getMachines,
@@ -152,5 +157,6 @@ export default {
   activateMachine,
   listUsers,
   createUser,
-  updateUserRole
+  updateUserRole,
+  getModelPerformance
 }
