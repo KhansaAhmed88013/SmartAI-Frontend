@@ -9,7 +9,7 @@ import PredictionCharts from '../components/predictions/PredictionCharts'
 import MaintenanceInsightsPanel from '../components/predictions/MaintenanceInsightsPanel'
 import ModelInfoCard from '../components/predictions/ModelInfoCard'
 import NoPermissionMessage from '../components/predictions/NoPermissionMessage'
-import { buildPredictionTimeline } from '../utils/predictionTimeline'
+import { buildPredictionTimeline, buildDashboardState } from '../utils/predictionTimeline'
 
 const horizonMinutesMap = { '15m': 15, '30m': 30, '45m': 45, '1h': 60 }
 
@@ -240,82 +240,36 @@ const AIPredictions = () => {
           console.log(`[TRACE] [buildPredictionTimeline] selectedPrediction is null`);
         }
 
-        const timeline = buildPredictionTimeline({ history, prediction: selectedPrediction })
-        const predictedSeries = timeline.chartSeries
-        const expected = timeline.snapshotTimeline
+        // ONE SOURCE OF TRUTH DERIVATION
+        const dashboardState = buildDashboardState(selectedPrediction, history)
+        const activePredictionId = dashboardState.objectId;
 
-        // STEP 5 - VERIFY THE CARD VALUES (Rebuild the card values directly from the active prediction's forecast array)
-        const summaries = ['15m', '30m', '45m', '1h'].map((key) => {
-          const horizonMinutes = horizonMinutesMap[key] || 0
-          
-          // Index mapping: 15m (index 5), 30m (index 11), 45m (index 17), 1h (index 23)
-          const horizonIndices = { '15m': 5, '30m': 11, '45m': 17, '1h': 23 }
-          const idx = horizonIndices[key]
-
-          // Rebuild card values directly from the active selected prediction's forecast array!
-          const tempForecast = selectedPrediction?.temperatureForecastValues || []
-          const currForecast = selectedPrediction?.currentForecastValues || []
-          const vibrationForecast = selectedPrediction?.vibrationForecastValues || []
-
-          const tempVal = tempForecast[idx] ?? null
-          const currVal = currForecast[idx] ?? null
-          const vibVal = vibrationForecast[idx] ?? null
-
-          const expectedAt = timeline.lastActualTimestamp
-            ? timeline.lastActualTimestamp + (horizonMinutes * 60000)
-            : timeline.forecastSeries[idx]?.timestamp || null
-
-          return {
-            horizon: key,
-            label: horizonLabelMap[key] || key,
-            prediction: selectedPrediction,
-            confidence: normalizeConfidence(timeline.confidence),
-            expectedAt,
-            forecastFrom: timeline.forecastWindowStart,
-            forecastUntil: timeline.forecastWindowEnd,
-            forecastStepMinutes: timeline.stepMinutes,
-            forecastSeries: timeline.forecastSeries.slice(0, idx + 1),
-            firstPredictedTemp: tempVal,
-            firstPredictedVib: vibVal,
-            firstPredictedCurr: currVal,
-            modelName: timeline.modelName || selectedPrediction?.modelName || 'ML prediction',
-            modelVersion: timeline.modelVersion || selectedPrediction?.modelVersion || 'N/A',
-            source: formatPredictionSource(selectedPrediction?.predictionSource || timeline.predictionSource),
-            lastActualTimestamp: timeline.lastActualTimestamp,
-            forecastCount: idx + 1,
-            lastForecastPoint: timeline.forecastSeries[idx] || null
-          }
-        })
-
-        const latestPrediction = selectedPrediction
-        const confidencePercent = normalizeConfidence(timeline.confidence)
-        const recent = timeline.lastActualTimestamp ? (Date.now() - timeline.lastActualTimestamp < 5 * 60 * 1000) : false
+        // Print prediction IDs to verify they all match
+        console.log(`[Dashboard Update] Verification Logs:`);
+        console.log(`- Dashboard ObjectId: ${activePredictionId}`);
+        console.log(`- Cards ObjectId: ${activePredictionId}`);
+        console.log(`- Charts ObjectId: ${activePredictionId}`);
+        console.log(`- Snapshot ObjectId: ${activePredictionId}`);
+        console.log(`- Timeline ObjectId: ${activePredictionId}`);
+        console.log(`- ForecastFrom ObjectId: ${activePredictionId}`);
+        console.log(`- ExpectedAt ObjectId: ${activePredictionId}`);
 
         if (mounted) {
-          const historyPart = predictedSeries.filter(p => !p.isForecast)
-          const forecastPart = predictedSeries.filter(p => p.isForecast)
-          let limit = 24
-          if (horizon === '15m') limit = 6
-          else if (horizon === '30m') limit = 12
-          else if (horizon === '45m') limit = 18
-          const slicedForecastPart = forecastPart.slice(0, limit)
-          const finalChartSeries = [...historyPart, ...slicedForecastPart]
-
-          setPredictionData(finalChartSeries)
-          setPredictedPoints(timeline.forecastSeries)
-          setExpectedShort(expected)
-          setHorizonSummaries(summaries)
-          setConfidence(confidencePercent)
-          setHasRecentData(recent)
+          setPredictionData(dashboardState.chart)
+          setPredictedPoints(dashboardState.timeline)
+          setExpectedShort(dashboardState.snapshot)
+          setHorizonSummaries(dashboardState.cards)
+          setConfidence(selectedPrediction?.confidence ? Math.round(selectedPrediction.confidence <= 1 ? selectedPrediction.confidence * 100 : selectedPrediction.confidence) : 0)
+          setHasRecentData(history.length > 0 ? (Date.now() - new Date(history[history.length - 1].timestamp).getTime() < 5 * 60 * 1000) : false)
           setActivePrediction(selectedPrediction)
-          setPredsMeta({ count: Object.values(predsByH).reduce((sum, records) => sum + (Array.isArray(records) ? records.filter(isRealPrediction).length : 0), 0), lastCreated: latestPrediction ? latestPrediction.createdAt : null })
+          setPredsMeta({ count: Object.values(predsByH).reduce((sum, records) => sum + (Array.isArray(records) ? records.filter(isRealPrediction).length : 0), 0), lastCreated: selectedPrediction ? selectedPrediction.createdAt : null })
           setForecastWindow({
-            start: timeline.forecastWindowStart,
-            end: timeline.forecastWindowStart + (limit * 2.5 * 60000), 
-            stepMinutes: timeline.stepMinutes,
-            lastActualTimestamp: timeline.lastActualTimestamp
+            start: dashboardState.forecastFrom,
+            end: dashboardState.expectedAt,
+            stepMinutes: 2.5,
+            lastActualTimestamp: history.length > 0 ? new Date(history[history.length - 1].timestamp).getTime() : null
           })
-          setMaintenanceInsights(Array.isArray(insights) ? insights : [])
+          setMaintenanceInsights(dashboardState.maintenance)
           
           if (modelPerf) {
             setModelInfo(modelPerf)
@@ -327,8 +281,8 @@ const AIPredictions = () => {
               currentModel: null,
               vibrationModel: null,
               predictionLength: '24 Forecast Points',
-              lastRetrained: latestPrediction?.createdAt ? new Date(latestPrediction.createdAt).toLocaleString() : 'N/A',
-              lastEvaluated: latestPrediction?.createdAt ? new Date(latestPrediction.createdAt).toLocaleString() : 'N/A'
+              lastRetrained: selectedPrediction?.createdAt ? new Date(selectedPrediction.createdAt).toLocaleString() : 'N/A',
+              lastEvaluated: selectedPrediction?.createdAt ? new Date(selectedPrediction.createdAt).toLocaleString() : 'N/A'
             })
           }
         }
