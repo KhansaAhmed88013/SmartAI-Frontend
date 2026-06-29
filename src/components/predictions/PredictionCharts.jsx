@@ -120,7 +120,29 @@ const renderMetricChart = ({ data, title, unit, actualKey, forecastKey, actualCo
   )
 }
 
-const PredictionCharts = ({ predictionData }) => {
+const PredictionCharts = ({ predictionData, activePrediction = null }) => {
+  if (activePrediction) {
+    const fv = activePrediction.forecastValues || [];
+    console.log(`[PredictionCharts Render Log]
+      prediction._id: ${activePrediction._id}
+      prediction.createdAt: ${activePrediction.createdAt}
+      forecastValues[last]: ${fv[fv.length - 1] ?? 'N/A'}`);
+    
+    const tfv = activePrediction.temperatureForecastValues || [];
+    const cfv = activePrediction.currentForecastValues || [];
+    const vfv = activePrediction.vibrationForecastValues || [];
+    console.log(`[TRACE] [PredictionCharts]:
+      ObjectId: ${activePrediction._id}
+      createdAt: ${activePrediction.createdAt}
+      forecastValues[0]: ${fv[0] ?? 'N/A'}
+      forecastValues[last]: ${fv[fv.length - 1] ?? 'N/A'}
+      temperatureForecastValues[last]: ${tfv[tfv.length - 1] ?? 'N/A'}
+      currentForecastValues[last]: ${cfv[cfv.length - 1] ?? 'N/A'}
+      vibrationForecastValues[last]: ${vfv[vfv.length - 1] ?? 'N/A'}`);
+  } else {
+    console.log(`[TRACE] [PredictionCharts] activePrediction is null/undefined`);
+  }
+
   if (!Array.isArray(predictionData) || predictionData.length === 0) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:gap-6">

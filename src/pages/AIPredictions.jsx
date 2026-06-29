@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../utils/api'
 import PredictionHeader from '../components/predictions/PredictionHeader'
 import PredictionHorizonSelector from '../components/predictions/PredictionHorizonSelector'
@@ -66,13 +66,25 @@ const isRealPrediction = (prediction) => {
 
 const pickLatestRealPrediction = (predictions) => {
   const arr = Array.isArray(predictions) ? predictions : []
-  console.log("[AIPredictions] [pickLatestRealPrediction] before sorting:", arr.map(p => ({ id: p._id, createdAt: p.createdAt })))
   const mlPredictions = arr
     .filter(isRealPrediction)
     .sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime())
-  console.log("[AIPredictions] [pickLatestRealPrediction] after sorting:", mlPredictions.map(p => ({ id: p._id, createdAt: p.createdAt })))
   const selected = mlPredictions[0] || null
-  console.log("[AIPredictions] [pickLatestRealPrediction] selected prediction:", selected ? { id: selected._id, createdAt: selected.createdAt } : null)
+  
+  if (selected) {
+    const fv = selected.forecastValues || [];
+    const tfv = selected.temperatureForecastValues || [];
+    const cfv = selected.currentForecastValues || [];
+    const vfv = selected.vibrationForecastValues || [];
+    console.log(`[TRACE] [pickLatestRealPrediction]:
+      ObjectId: ${selected._id}
+      createdAt: ${selected.createdAt}
+      forecastValues[0]: ${fv[0] ?? 'N/A'}
+      forecastValues[last]: ${fv[fv.length - 1] ?? 'N/A'}
+      temperatureForecastValues[last]: ${tfv[tfv.length - 1] ?? 'N/A'}
+      currentForecastValues[last]: ${cfv[cfv.length - 1] ?? 'N/A'}
+      vibrationForecastValues[last]: ${vfv[vfv.length - 1] ?? 'N/A'}`);
+  }
   return selected
 }
 
@@ -113,7 +125,10 @@ const AIPredictions = () => {
   const [hasRecentData, setHasRecentData] = useState(false)
   const [role, setRole] = useState('')
   const [roleLoaded, setRoleLoaded] = useState(false)
+  const [activePrediction, setActivePrediction] = useState(null)
   const canViewPredictions = roleLoaded && (role === 'MAINTENANCE_ENGINEER' || role === 'SYSTEM_ADMIN' || role === 'ADMIN')
+
+  const prevSelectedPredictionIdRef = useRef(null)
 
   useEffect(() => {
     setPredictionData([])
@@ -126,6 +141,7 @@ const AIPredictions = () => {
     setMaintenanceInsights([])
     setModelInfo({ modelType: 'N/A', version: 'N/A', accuracy: 0, trainingSamples: 0, lastTrained: 'N/A' })
     setHasRecentData(false)
+    setActivePrediction(null)
   }, [selectedMachine])
 
   useEffect(() => {
@@ -159,29 +175,76 @@ const AIPredictions = () => {
         ])
         console.log(`[AIPredictions] [fetchAndBuild] Fetch completed successfully`);
 
+        // STEP 2 - VERIFY THE FRONTEND RECEIVES THE SAME DATA
+        const allArrivals = { '15m': preds15, '30m': preds30, '45m': preds45, '1h': preds1h };
+        Object.entries(allArrivals).forEach(([h, list]) => {
+          if (Array.isArray(list) && list.length > 0) {
+            const newest = list[0];
+            const tempForecast = newest.temperatureForecastValues || newest.forecastValues || [];
+            console.log(`[TRACE] [AIPredictions.jsx - API Arrival] [${h}]:
+              ObjectId: ${newest._id}
+              createdAt: ${newest.createdAt}
+              horizon: ${newest.horizon}
+              temperature: ${newest.temperature}
+              last value of forecast array: ${tempForecast[tempForecast.length - 1] ?? 'N/A'}`);
+          }
+        });
+
         const selectedMachineData = Array.isArray(machines) ? machines.find((m) => m._id === selectedMachine) : null
         const effectiveStatus = selectedMachineData?.effectiveStatus || selectedMachineData?.status || ''
         if (mounted) {
           setMachineStatus(effectiveStatus)
         }
 
+        // STEP 3 - TRACE groupPredictionsByHorizon
         const predsByH = { '15m': preds15 || [], '30m': preds30 || [], '45m': preds45 || [], '1h': preds1h || [] }
+        console.log(`[TRACE] [groupPredictionsByHorizon]:`);
+        Object.entries(predsByH).forEach(([h, list]) => {
+          if (list.length > 0) {
+            const first = list[0];
+            const tfv = first.temperatureForecastValues || [];
+            console.log(`  Group ${h} Newest Prediction: ObjectId=${first._id}, createdAt=${first.createdAt}, temperatureForecastValues[last]=${tfv[tfv.length - 1] ?? 'N/A'}`);
+          } else {
+            console.log(`  Group ${h}: empty`);
+          }
+        });
+
         const latestRealPrediction = pickLatestRealPredictionFromAllHorizons(predsByH)
         const selectedPrediction = pickLatestRealPrediction(predsByH[horizon]) || latestRealPrediction
 
-        console.log(`[AIPredictions] [fetchAndBuild] Selected prediction for building timeline:`, selectedPrediction ? {
-          ObjectId: selectedPrediction._id,
-          createdAt: selectedPrediction.createdAt,
-          horizon: selectedPrediction.horizon,
-          predictionSource: selectedPrediction.predictionSource,
-          modelName: selectedPrediction.modelName
-        } : null);
+        // STEP 6 - VERIFY REACT STATE
+        const prevId = prevSelectedPredictionIdRef.current;
+        const newId = selectedPrediction?._id || null;
+        console.log(`[React State Poll] Previous selectedPrediction._id: ${prevId}`);
+        console.log(`[React State Poll] New selectedPrediction._id: ${newId}`);
+        if (prevId !== newId) {
+          console.log(`[React State Poll] selectedPrediction ID changed! Updating ref.`);
+          prevSelectedPredictionIdRef.current = newId;
+        }
+
+        // STEP 3 - TRACE buildPredictionTimeline Input
+        if (selectedPrediction) {
+          const fv = selectedPrediction.forecastValues || [];
+          const tfv = selectedPrediction.temperatureForecastValues || [];
+          const cfv = selectedPrediction.currentForecastValues || [];
+          const vfv = selectedPrediction.vibrationForecastValues || [];
+          console.log(`[TRACE] [buildPredictionTimeline]:
+            ObjectId: ${selectedPrediction._id}
+            createdAt: ${selectedPrediction.createdAt}
+            forecastValues[0]: ${fv[0] ?? 'N/A'}
+            forecastValues[last]: ${fv[fv.length - 1] ?? 'N/A'}
+            temperatureForecastValues[last]: ${tfv[tfv.length - 1] ?? 'N/A'}
+            currentForecastValues[last]: ${cfv[cfv.length - 1] ?? 'N/A'}
+            vibrationForecastValues[last]: ${vfv[vfv.length - 1] ?? 'N/A'}`);
+        } else {
+          console.log(`[TRACE] [buildPredictionTimeline] selectedPrediction is null`);
+        }
 
         const timeline = buildPredictionTimeline({ history, prediction: selectedPrediction })
         const predictedSeries = timeline.chartSeries
         const expected = timeline.snapshotTimeline
 
-        // We extract all values from the single 1h prediction forecast values
+        // STEP 5 - VERIFY THE CARD VALUES (Rebuild the card values directly from the active prediction's forecast array)
         const summaries = ['15m', '30m', '45m', '1h'].map((key) => {
           const horizonMinutes = horizonMinutesMap[key] || 0
           
@@ -189,9 +252,14 @@ const AIPredictions = () => {
           const horizonIndices = { '15m': 5, '30m': 11, '45m': 17, '1h': 23 }
           const idx = horizonIndices[key]
 
-          const tempVal = timeline.forecastSeries[idx]?.predictedTemp ?? null
-          const vibVal = timeline.forecastSeries[idx]?.predictedVib ?? null
-          const currVal = timeline.forecastSeries[idx]?.predictedCurr ?? null
+          // Rebuild card values directly from the active selected prediction's forecast array!
+          const tempForecast = selectedPrediction?.temperatureForecastValues || []
+          const currForecast = selectedPrediction?.currentForecastValues || []
+          const vibrationForecast = selectedPrediction?.vibrationForecastValues || []
+
+          const tempVal = tempForecast[idx] ?? null
+          const currVal = currForecast[idx] ?? null
+          const vibVal = vibrationForecast[idx] ?? null
 
           const expectedAt = timeline.lastActualTimestamp
             ? timeline.lastActualTimestamp + (horizonMinutes * 60000)
@@ -221,17 +289,9 @@ const AIPredictions = () => {
 
         const latestPrediction = selectedPrediction
         const confidencePercent = normalizeConfidence(timeline.confidence)
-        const sampleCount = Math.max(
-          latestPrediction?.temperatureForecastValues?.length || 0,
-          latestPrediction?.currentForecastValues?.length || 0,
-          latestPrediction?.vibrationForecastValues?.length || 0,
-          latestPrediction?.forecastValues?.length || 0
-        )
-
         const recent = timeline.lastActualTimestamp ? (Date.now() - timeline.lastActualTimestamp < 5 * 60 * 1000) : false
 
         if (mounted) {
-          // Slice predictedSeries based on the selected horizon
           const historyPart = predictedSeries.filter(p => !p.isForecast)
           const forecastPart = predictedSeries.filter(p => p.isForecast)
           let limit = 24
@@ -247,10 +307,11 @@ const AIPredictions = () => {
           setHorizonSummaries(summaries)
           setConfidence(confidencePercent)
           setHasRecentData(recent)
+          setActivePrediction(selectedPrediction)
           setPredsMeta({ count: Object.values(predsByH).reduce((sum, records) => sum + (Array.isArray(records) ? records.filter(isRealPrediction).length : 0), 0), lastCreated: latestPrediction ? latestPrediction.createdAt : null })
           setForecastWindow({
             start: timeline.forecastWindowStart,
-            end: timeline.forecastWindowStart + (limit * 2.5 * 60000), // Adjust end time to match the selected horizon
+            end: timeline.forecastWindowStart + (limit * 2.5 * 60000), 
             stepMinutes: timeline.stepMinutes,
             lastActualTimestamp: timeline.lastActualTimestamp
           })
@@ -262,9 +323,9 @@ const AIPredictions = () => {
             setModelInfo({
               predictionEngine: 'Autoformer AI',
               modelType: 'Time-Series Forecasting',
-              temperatureModel: { accuracy: 94.25, mae: 0.7841, rmse: 1.0482, mape: 5.75 },
-              currentModel: { accuracy: 93.82, mae: 0.6814, rmse: 0.9125, mape: 6.18 },
-              vibrationModel: { accuracy: 95.14, mae: 0.1254, rmse: 0.1873, mape: 4.86 },
+              temperatureModel: null,
+              currentModel: null,
+              vibrationModel: null,
               predictionLength: '24 Forecast Points',
               lastRetrained: latestPrediction?.createdAt ? new Date(latestPrediction.createdAt).toLocaleString() : 'N/A',
               lastEvaluated: latestPrediction?.createdAt ? new Date(latestPrediction.createdAt).toLocaleString() : 'N/A'
@@ -284,9 +345,9 @@ const AIPredictions = () => {
           setModelInfo({
             predictionEngine: 'Autoformer AI',
             modelType: 'Time-Series Forecasting',
-            temperatureModel: { accuracy: 94.25, mae: 0.7841, rmse: 1.0482, mape: 5.75 },
-            currentModel: { accuracy: 93.82, mae: 0.6814, rmse: 0.9125, mape: 6.18 },
-            vibrationModel: { accuracy: 95.14, mae: 0.1254, rmse: 0.1873, mape: 4.86 },
+            temperatureModel: null,
+            currentModel: null,
+            vibrationModel: null,
             predictionLength: '24 Forecast Points',
             lastRetrained: 'N/A',
             lastEvaluated: 'N/A'
@@ -333,6 +394,7 @@ const AIPredictions = () => {
       ) : canViewPredictions ? (
         <UpcomingPredictionsGrid
           horizonSummaries={horizonSummaries}
+          activePrediction={activePrediction}
         />
       ) : (
         <NoPermissionMessage />
@@ -342,6 +404,7 @@ const AIPredictions = () => {
         expectedShort={expectedShort}
         forecastWindow={forecastWindow}
         confidence={confidence}
+        activePrediction={activePrediction}
       />
 
       <PredictionHorizonSelector
@@ -354,7 +417,7 @@ const AIPredictions = () => {
 
       <PredictionMetadata predsMeta={predsMeta} />
 
-      <PredictionCharts predictionData={predictionData} />
+      <PredictionCharts predictionData={predictionData} activePrediction={activePrediction} />
 
       <MaintenanceInsightsPanel maintenanceInsights={maintenanceInsights} />
 

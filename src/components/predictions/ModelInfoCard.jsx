@@ -2,13 +2,20 @@ const ModelInfoCard = ({ modelInfo }) => {
   const {
     predictionEngine = 'Autoformer AI',
     modelType = 'Time-Series Forecasting',
-    temperatureModel = { accuracy: 0, mae: 0, rmse: 0, mape: 0 },
-    currentModel = { accuracy: 0, mae: 0, rmse: 0, mape: 0 },
-    vibrationModel = { accuracy: 0, mae: 0, rmse: 0, mape: 0 },
+    temperatureModel = null,
+    currentModel = null,
+    vibrationModel = null,
     predictionLength = '24 Forecast Points',
     lastRetrained = 'N/A',
     lastEvaluated = 'N/A'
   } = modelInfo || {}
+
+  const renderMetric = (model, key, suffix = '') => {
+    if (!model) return 'Not Evaluated'
+    const val = model[key]
+    if (val === undefined || val === null) return 'Not Evaluated'
+    return `${val}${suffix}`
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
@@ -40,19 +47,19 @@ const ModelInfoCard = ({ modelInfo }) => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Accuracy:</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{temperatureModel.accuracy}%</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{renderMetric(temperatureModel, 'accuracy', '%')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">MAE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{temperatureModel.mae}</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(temperatureModel, 'mae')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">RMSE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{temperatureModel.rmse}</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(temperatureModel, 'rmse')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">MAPE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{temperatureModel.mape}%</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(temperatureModel, 'mape', '%')}</span>
             </div>
           </div>
         </div>
@@ -65,19 +72,19 @@ const ModelInfoCard = ({ modelInfo }) => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Accuracy:</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{currentModel.accuracy}%</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{renderMetric(currentModel, 'accuracy', '%')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">MAE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{currentModel.mae}</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(currentModel, 'mae')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">RMSE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{currentModel.rmse}</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(currentModel, 'rmse')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">MAPE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{currentModel.mape}%</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(currentModel, 'mape', '%')}</span>
             </div>
           </div>
         </div>
@@ -90,19 +97,19 @@ const ModelInfoCard = ({ modelInfo }) => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Accuracy:</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{vibrationModel.accuracy}%</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{renderMetric(vibrationModel, 'accuracy', '%')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">MAE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{vibrationModel.mae}</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(vibrationModel, 'mae')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">RMSE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{vibrationModel.rmse}</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(vibrationModel, 'rmse')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">MAPE:</span>
-              <span className="font-mono text-gray-900 dark:text-gray-100">{vibrationModel.mape}%</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">{renderMetric(vibrationModel, 'mape', '%')}</span>
             </div>
           </div>
         </div>

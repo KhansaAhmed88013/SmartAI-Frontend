@@ -73,7 +73,7 @@ export const buildPredictionTimeline = ({ history = [], prediction = null } = {}
   console.log(`[predictionTimeline] [buildPredictionTimeline] called. prediction.createdAt: ${prediction?.createdAt || 'N/A'}`);
   const historySeries = normalizeHistorySeries(history)
   const lastHistoryPoint = historySeries.length > 0 ? historySeries[historySeries.length - 1] : null
-  const anchorTimestamp = lastHistoryPoint?.timestamp ?? extractTimestamp(prediction) ?? Date.now()
+  const anchorTimestamp = extractTimestamp(prediction) ?? lastHistoryPoint?.timestamp ?? Date.now()
 
   const temperatureForecastValues = getForecastValues(prediction, 'temperature')
   const vibrationForecastValues = getForecastValues(prediction, 'vibration')

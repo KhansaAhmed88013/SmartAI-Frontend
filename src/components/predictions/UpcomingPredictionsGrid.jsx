@@ -21,7 +21,27 @@ const horizonStyles = {
 
 const formatMetric = (value) => (Number.isFinite(Number(value)) ? Number(value).toFixed(2) : 'N/A')
 
-const UpcomingPredictionsGrid = ({ horizonSummaries = [] }) => {
+const UpcomingPredictionsGrid = ({ horizonSummaries = [], activePrediction = null }) => {
+  const printComponentTrace = (componentName, p) => {
+    if (!p) {
+      console.log(`[TRACE] [${componentName}] Prediction is null/undefined`);
+      return;
+    }
+    const fv = p.forecastValues || [];
+    const tfv = p.temperatureForecastValues || [];
+    const cfv = p.currentForecastValues || [];
+    const vfv = p.vibrationForecastValues || [];
+    console.log(`[TRACE] [${componentName}]:
+      ObjectId: ${p._id}
+      createdAt: ${p.createdAt}
+      forecastValues[0]: ${fv[0] ?? 'N/A'}
+      forecastValues[last]: ${fv[fv.length - 1] ?? 'N/A'}
+      temperatureForecastValues[last]: ${tfv[tfv.length - 1] ?? 'N/A'}
+      currentForecastValues[last]: ${cfv[cfv.length - 1] ?? 'N/A'}
+      vibrationForecastValues[last]: ${vfv[vfv.length - 1] ?? 'N/A'}`);
+  };
+  printComponentTrace("UpcomingPredictionsGrid", activePrediction);
+
   const cards = Array.isArray(horizonSummaries) ? horizonSummaries : []
 
   return (
