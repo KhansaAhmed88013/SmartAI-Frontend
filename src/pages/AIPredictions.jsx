@@ -373,8 +373,11 @@ const AIPredictions = () => {
 
       <PredictionCharts predictionData={predictionData} activePrediction={activePrediction} />
 
+      {/* Maintenance Insights Panel 
+      
       <MaintenanceInsightsPanel maintenanceInsights={maintenanceInsights} />
-
+      */}
+      
       <ModelInfoCard modelInfo={modelInfo} />
     </div>
   )
