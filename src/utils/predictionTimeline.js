@@ -70,6 +70,7 @@ export const inferStepMinutes = (historySeries = []) => {
 }
 
 export const buildPredictionTimeline = ({ history = [], prediction = null } = {}) => {
+  console.log(`[predictionTimeline] [buildPredictionTimeline] called. prediction.createdAt: ${prediction?.createdAt || 'N/A'}`);
   const historySeries = normalizeHistorySeries(history)
   const lastHistoryPoint = historySeries.length > 0 ? historySeries[historySeries.length - 1] : null
   const anchorTimestamp = lastHistoryPoint?.timestamp ?? extractTimestamp(prediction) ?? Date.now()
@@ -78,6 +79,13 @@ export const buildPredictionTimeline = ({ history = [], prediction = null } = {}
   const vibrationForecastValues = getForecastValues(prediction, 'vibration')
   const currentForecastValues = getForecastValues(prediction, 'current')
   const fallbackForecastValues = getForecastValues(prediction, 'forecast')
+
+  console.log(`[predictionTimeline] [buildPredictionTimeline] Extracted forecast values:
+    prediction.createdAt: ${prediction?.createdAt || 'N/A'}
+    forecastValues: ${prediction?.forecastValues ? JSON.stringify(prediction.forecastValues) : '[]'}
+    temperatureForecastValues: ${JSON.stringify(temperatureForecastValues)}
+    currentForecastValues: ${JSON.stringify(currentForecastValues)}
+    vibrationForecastValues: ${JSON.stringify(vibrationForecastValues)}`);
 
   const totalForecastPoints = Math.max(
     temperatureForecastValues.length,

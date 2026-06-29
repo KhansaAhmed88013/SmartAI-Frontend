@@ -65,10 +65,15 @@ const isRealPrediction = (prediction) => {
 }
 
 const pickLatestRealPrediction = (predictions) => {
-  const mlPredictions = (Array.isArray(predictions) ? predictions : [])
+  const arr = Array.isArray(predictions) ? predictions : []
+  console.log("[AIPredictions] [pickLatestRealPrediction] before sorting:", arr.map(p => ({ id: p._id, createdAt: p.createdAt })))
+  const mlPredictions = arr
     .filter(isRealPrediction)
     .sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime())
-  return mlPredictions[0] || null
+  console.log("[AIPredictions] [pickLatestRealPrediction] after sorting:", mlPredictions.map(p => ({ id: p._id, createdAt: p.createdAt })))
+  const selected = mlPredictions[0] || null
+  console.log("[AIPredictions] [pickLatestRealPrediction] selected prediction:", selected ? { id: selected._id, createdAt: selected.createdAt } : null)
+  return selected
 }
 
 const pickLatestRealPredictionFromAllHorizons = (predictionsByHorizon) => {
@@ -140,6 +145,7 @@ const AIPredictions = () => {
     let mounted = true
 
     const fetchAndBuild = async () => {
+      console.log(`[AIPredictions] [fetchAndBuild] Fetch started for machine: ${selectedMachine}`);
       try {
         const [machines, history, preds15, preds30, preds45, preds1h, insights, modelPerf] = await Promise.all([
           api.getMachines().catch(() => []),
@@ -151,6 +157,7 @@ const AIPredictions = () => {
           api.getInsights(selectedMachine, horizon).catch(() => []),
           api.getModelPerformance().catch(() => null)
         ])
+        console.log(`[AIPredictions] [fetchAndBuild] Fetch completed successfully`);
 
         const selectedMachineData = Array.isArray(machines) ? machines.find((m) => m._id === selectedMachine) : null
         const effectiveStatus = selectedMachineData?.effectiveStatus || selectedMachineData?.status || ''
@@ -160,7 +167,15 @@ const AIPredictions = () => {
 
         const predsByH = { '15m': preds15 || [], '30m': preds30 || [], '45m': preds45 || [], '1h': preds1h || [] }
         const latestRealPrediction = pickLatestRealPredictionFromAllHorizons(predsByH)
-        const selectedPrediction = pickLatestRealPrediction(predsByH['1h']) || latestRealPrediction
+        const selectedPrediction = pickLatestRealPrediction(predsByH[horizon]) || latestRealPrediction
+
+        console.log(`[AIPredictions] [fetchAndBuild] Selected prediction for building timeline:`, selectedPrediction ? {
+          ObjectId: selectedPrediction._id,
+          createdAt: selectedPrediction.createdAt,
+          horizon: selectedPrediction.horizon,
+          predictionSource: selectedPrediction.predictionSource,
+          modelName: selectedPrediction.modelName
+        } : null);
 
         const timeline = buildPredictionTimeline({ history, prediction: selectedPrediction })
         const predictedSeries = timeline.chartSeries

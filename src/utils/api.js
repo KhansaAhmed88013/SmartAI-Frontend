@@ -78,8 +78,27 @@ export async function getPeakHours(machineId) {
 }
 
 export async function getPredictions(machineId, horizon = '1h') {
+  console.log(`[API] getPredictions started for machine: ${machineId}, horizon: ${horizon}`);
   const res = await fetch(`${BASE}/api/predictions/${machineId}?horizon=${horizon}`, { headers: headers(false) })
   const data = await readJson(res, 'Failed to fetch predictions')
+  console.log(`[API] getPredictions completed for horizon: ${horizon}. Received ${data.length} items.`);
+  if (data.length > 0) {
+    data.forEach((p, idx) => {
+      console.log(`[API] [${horizon}] Index ${idx} Prediction Document:
+        ObjectId: ${p._id}
+        createdAt: ${p.createdAt}
+        horizon: ${p.horizon}
+        temperature: ${p.temperature}
+        vibration: ${p.vibration}
+        current: ${p.current}
+        predictionSource: ${p.predictionSource}
+        modelName: ${p.modelName}
+        forecastValues.length: ${p.forecastValues?.length || 0}
+        tempForecast.length: ${p.temperatureForecastValues?.length || 0}
+        currForecast.length: ${p.currentForecastValues?.length || 0}
+        vibForecast.length: ${p.vibrationForecastValues?.length || 0}`);
+    });
+  }
   return Array.isArray(data) ? data : []
 }
 
